@@ -77,21 +77,46 @@ $app ->group ('/products',function()use($app){
     $this->map(['GET'],'/all/{id}',function($request,$response,$args){
         //get by category
             $_products = new Products();
-            $products = $_products->where("Category_ID",'=',$args['id'])->get()->toArray();
-            for ($i = 0; $i<count($products);$i++)
+            $page=$request->getQueryParam('page',null);
+            $perpage=10;
+            $total = $_products->where("Category_ID",'=',$args['id'])->count();
+            if($page!=null)
             {
+                //$products = $_products->where("Category_ID",'=',$args['id'])->get();
+                $products = $_products->where("Category_ID",'=',$args['id'])->skip($page*$perpage)->take(10)->get();
                 
-                $payload[$i]['id']=$products[$i]['Product_ID'];
-                $payload[$i]['name'] = $products[$i]['Product_name'];
-                
+            }else
+            {
+                $products = $_products->where("Category_ID",'=',$args['id'])->get();
             }
-            return $response->withStatus(200)->withJson($payload);
+            for ($i = 0; $i<count($products);$i++)
+            {   
+                $payload[$i]['id']=$products[$i]['Product_ID'];
+                $payload[$i]['name'] = $products[$i]['Product_name'];   
+            }
+            $var['data'] = $payload;
+            $var['total'] = $total;
+            $var['exit'] = false;
+            return $response->withStatus(200)->withJson($var);
     });
+    
     $this->map(['GET'],'/{id}',function($request,$response,$args){
         //single product
         $_products = new Products();
-        $products = $_products->where('Product_ID','=',$args['id'])->get()->toArray();
-        print_r($products);
+        $_variant = new VariantModel();
+        $_variantspec = new VariantSpecModel();
+        $products = $_products->where('Product_ID','=',$args['id'])->get()->first();
+        $variants = $_variant->where('Product_ID','=',$args['id'])->get()->toArray();
+        for($i=0; $i<count($variants);$i++)
+        {
+            //print_r($variants[$i]['Specification_ID']);
+            $variants[$i]['Specifications'] = $_variantspec->where('Specification_ID','=',$variants[$i]['Specification_ID'])->get()->toArray();
+
+        }
+        $products['variant'] = $variants;
+        $payload['data'] = $products;
+        $payload['exit'] = false;
+        return $response->withStatus(200)->withJson($payload);
     });
     
     
@@ -141,6 +166,8 @@ $app->group('/user',function()use($app){
         return $response->withStatus(200)->withJson($payload);
 
     });
+   
+   
     $this->map(['POST'],'',function($request,$response,$args){
                 //LOGIN
         $username = $request->getParsedBodyParam('username','');
@@ -420,11 +447,8 @@ $app->group('/user',function()use($app){
         ->leftJoin('Products', function($leftJoin)use($Product_ID)
         {
             $leftJoin->on('wishlist.Product_ID', '=', 'Products.Product_ID');
-            
-
-
-        });
-        print_r($query->get()->toArray());
+        })->get();
+        return $response->withStatus(201)->withJson($query);
     });
     
     
