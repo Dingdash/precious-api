@@ -71,8 +71,7 @@ $app ->group ('/products',function()use($app){
                 $payload['message'] = 'data not retrieved';
                 return $response->withStatus(400)->withJson($payload);
             }
-         
-            
+
         });
     $this->map(['GET'],'/all/{id}',function($request,$response,$args){
         //get by category
@@ -118,6 +117,29 @@ $app ->group ('/products',function()use($app){
         $payload['exit'] = false;
         return $response->withStatus(200)->withJson($payload);
     });
+    $this->map(['GET'],'/{id}/variant/{ids}',function($request,$response,$args){
+        //single product
+        $_products = new Products();
+        $_variant = new VariantModel();
+        $_variantspec = new VariantSpecModel();
+        $products = $_products->where('Product_ID','=',$args['id'])->get()->first();
+        $variants = $_variant->where('Product_ID','=',$args['id'])->where('Specification_ID','=',$args['ids'])->get()->first();
+        // for($i=0; $i<count($variants);$i++)
+        // {
+        //     //print_r($variants[$i]['Specification_ID']);
+        //     $variants[$i]['Specifications'] = $_variantspec->where('Specification_ID','=',$variants[$i]['Specification_ID'])->get()->toArray();
+
+        // }
+        $products['variant'] = $variants;
+        $products['price'] = $variants['Specification_price'];
+        $payload['data'] = $products;
+        $payload['exit'] = false;
+        return $response->withStatus(200)->withJson($payload);
+    });
+   
+
+
+   
     
     
 });
@@ -184,12 +206,42 @@ $app->group('/user',function()use($app){
         return $response->withStatus(200)->withJson($data);
        // $loggedin = User::where('username',$username)->take(1)->get();
     })->setName('getuserdata');
-    $this->map(['POST'],'/edituser/name',function($request,$response,$args){
+    $this->map(['POST'],'/edituser/firstname',function($request,$response,$args){
         $user = new Userdata();
         $param= $request->getParsedBody();
                     
         $userUpdate = $user->where('username','=','peter')->get()[0];
         $userUpdate->first_name = $param['first_name'];
+        //$userUpdate->last_name = $param['last_name'];
+        if($userUpdate)
+        {
+            $userUpdate->save();
+            // success
+            $payload = ['user_id' => $userUpdate->id,
+                    'user_uri' => '/user/' . $userUpdate->id,
+                    'first_name'   => $userUpdate->first_name,
+                    'last_name' =>$userUpdate->last_name,
+                    'age' => $userUpdate->age
+                    ];
+            $data['data'] = $payload;
+            
+            $data['message'] = "update success";
+            $data['exit'] = false;
+            return $response->withStatus(200)->withJson($data);
+        }else
+        {
+            $data['message'] = "update failed";
+            $data['exit'] = true;
+            return $response->withStatus(400)->withJson($data);
+        }
+        
+    });
+    $this->map(['POST'],'/edituser/lastname',function($request,$response,$args){
+        $user = new Userdata();
+        $param= $request->getParsedBody();
+                    
+        $userUpdate = $user->where('username','=','peter')->get()[0];
+        //$userUpdate->first_name = $param['first_name'];
         $userUpdate->last_name = $param['last_name'];
         if($userUpdate)
         {
@@ -219,7 +271,7 @@ $app->group('/user',function()use($app){
         $param= $request->getParsedBody();
                     
         $userUpdate = $user->where('username','=','peter')->get()[0];
-        $userUpdate->password = md5($param['password']);
+        $userUpdate->password = $param['password'];
         if($userUpdate)
         {
             $userUpdate->save();
@@ -228,7 +280,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -256,7 +309,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -284,7 +338,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -312,7 +367,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -340,7 +396,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -368,7 +425,8 @@ $app->group('/user',function()use($app){
                     'user_uri' => '/user/' . $userUpdate->id,
                     'first_name'   => $userUpdate->first_name,
                     'last_name' =>$userUpdate->last_name,
-                    'age' => $userUpdate->age
+                    'age' => $userUpdate->age,
+                    'gender'=>$userUpdate->gender
                     ];
             $data['data'] = $payload;
             
@@ -389,35 +447,27 @@ $app->group('/user',function()use($app){
         $getemail = $user->where('email','=',$param['email'])->get();
         if($getemail == NULL)
         {
-            
             $param= $request->getParsedBody();
-            $user = new Userdata();
-            
+            $user = new Userdata();   
             $user->username = $param['username'];
             $user->first_name = 'first_name';
             $user->last_name = 'last_name';
-            
             $user->address = $param['address'];
             $user->city = $param['city'];
             $user->email = $param['email'];
-            
             $user->post_code = $param['post_code'];
-        
             $user->gender = $param['gender'];
             $user->telp = $param['telp'];
             $user->age = $param['age'];
             $user->password = $param['password'];
             $apiKey = $user->generateAPIKey();
             $user->apikey = $apiKey;
-
             $user->save();
             if($user->id)
             { $data['message'] = "registration successful";
               $data['exit'] = false;
                 return $response->withStatus(201)->withJson($data);
             }
-            
-
         }else
         {
             $data['message'] = "email has been used please use another email";
@@ -450,12 +500,38 @@ $app->group('/user',function()use($app){
         })->get();
         return $response->withStatus(201)->withJson($query);
     });
+    $this->map(['GET'],'/wishlist/{id}/{userid}',function($request,$response,$args){
+        $_wishlist = new Wishlist();
+        $wishlist = $_wishlist->where('Product_ID','=',$args['id'])->where('User_ID','=',$args['userid'])->get()->count();
+        
+        if($wishlist>0)
+        {
+            $payload['message'] = "You have added this product to wishlist";
+            return $response->withStatus(200)->withJson($payload);
+        }else
+        {
+            $_wishlist = new Wishlist();
+            $_wishlist->Product_ID = $args['id'];
+            $_wishlist->User_ID= $args['userid'];
+            $_wishlist->save();
+            $payload['message'] = "Added to wishlist";
+            return $response->withStatus(200)->withJson($payload);
+
+            
+        }
+    });
+    $this->map(['GET'],'/wishlist/r/{id}/{userid}',function($request,$response,$args){
+        $_wishlist = new Wishlist();
+        $wishlist = $_wishlist->where('Product_ID','=',$args['id'])->where('User_ID','=',$args['userid'])->delete();
+        $payload['message'] = "removed from wishlist";
+        return $response->withStatus(200)->withJson($payload);
+    });
+});
+
+$app->group('/search',function()use($app){
     
-    
-   
 
 });
-    
     
 
 
